@@ -1,0 +1,1619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GroundTruth — Household Food Navigator</title>
+<style>
+:root {
+  --bg: #faf7f2;
+  --card: #ffffff;
+  --border: #d9d2c2;
+  --accent: #5b6b3a;
+  --accent-dark: #3f4a28;
+  --accent-light: #eef1e6;
+  --text: #252520;
+  --muted: #5c5748;
+  --warn: #a4522a;
+  --warn-light: #f5e6de;
+  --row-alt: #f5f2ea;
+  --font-scale: 1;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-sizing: border-box;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1c1b17; --card: #262420; --border: #46423a; --accent: #8ba35f;
+    --accent-dark: #a9c17f; --accent-light: #33361f; --text: #ede8dc;
+    --muted: #b8b0a0; --warn: #d98a5f; --warn-light: #3d2a20; --row-alt: #29271f;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #1c1b17; --card: #262420; --border: #46423a; --accent: #8ba35f;
+  --accent-dark: #a9c17f; --accent-light: #33361f; --text: #ede8dc;
+  --muted: #b8b0a0; --warn: #d98a5f; --warn-light: #3d2a20; --row-alt: #29271f;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: calc(15px * var(--font-scale));
+  line-height: 1.5;
+}
+h1, h2, h3, .serif { font-family: Georgia, "Times New Roman", serif; }
+.hidden { display: none !important; }
+button { font-family: inherit; font-size: inherit; cursor: pointer; }
+a { color: inherit; }
+
+#accent-strip { height: 6px; background: var(--accent); }
+#topbar {
+  display: flex; justify-content: flex-end; align-items: center; gap: 6px;
+  padding: 6px 20px; font-size: calc(13px * var(--font-scale)); color: var(--muted);
+}
+.ghost-btn {
+  background: none; border: none; color: var(--accent-dark); padding: 6px 10px;
+  border-radius: 4px; font-weight: 600;
+}
+.ghost-btn:hover { background: var(--accent-light); }
+
+#shell { display: flex; min-height: calc(100vh - 40px); }
+#sidebar {
+  width: 190px; flex: 0 0 190px; background: var(--card); border-right: 1px solid var(--border);
+  padding: 20px 0; display: flex; flex-direction: column;
+}
+#sidebar .brand { font-family: Georgia, serif; font-weight: bold; font-size: calc(18px * var(--font-scale));
+  padding: 0 18px 20px 18px; }
+.nav-item {
+  padding: 11px 18px; font-weight: 600; color: var(--muted); cursor: pointer; user-select: none;
+}
+.nav-item:hover { background: var(--accent-light); }
+.nav-item.active { background: var(--accent); color: white; }
+#sidebar .spacer { flex: 1; }
+#reset-household {
+  margin: 10px 18px 4px 18px; padding: 8px 0; color: var(--warn); font-size: calc(13px * var(--font-scale));
+  font-weight: 600; cursor: pointer; border-top: 1px solid var(--border); padding-top: 14px;
+}
+
+#content { flex: 1; min-width: 0; padding: 22px 28px 40px 28px; overflow-x: hidden; }
+.page { max-width: 1000px; }
+
+.card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 4px;
+  padding: 20px 22px; margin-bottom: 14px;
+}
+.card h2 { margin: 0 0 4px 0; font-size: calc(18px * var(--font-scale)); color: var(--accent-dark); }
+.muted { color: var(--muted); font-size: calc(13px * var(--font-scale)); }
+.small { font-size: calc(12.5px * var(--font-scale)); color: var(--muted); }
+
+.summary-cards { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.summary-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 4px;
+  padding: 16px 18px; flex: 1 1 200px; min-width: 190px;
+}
+.summary-card .label { font-weight: 700; font-size: calc(13px * var(--font-scale)); margin-bottom: 6px; }
+.summary-card .value { font-size: calc(26px * var(--font-scale)); font-weight: 700; color: var(--accent-dark); }
+.summary-card .value.warn { color: var(--warn); }
+.summary-card .sub { font-size: calc(12px * var(--font-scale)); color: var(--muted); margin-top: 4px; }
+
+/* Home */
+.home-header { position: relative; padding: 10px 0 6px 0; }
+.home-header h1 { font-size: calc(30px * var(--font-scale)); margin: 0; }
+.bg-blob { position: absolute; border-radius: 50%; z-index: -1; opacity: 0.7; }
+#home-wrap { position: relative; }
+.status-strip { background: var(--card); border: 1px solid var(--border); border-radius: 4px; padding: 10px 16px; margin: 10px 0 4px 0; font-weight: 700; }
+.status-strip.warn { color: var(--warn); }
+.tile-list { margin-top: 18px; display: flex; flex-direction: column; gap: 8px; }
+.tile {
+  display: flex; align-items: stretch; background: var(--card); border: 1px solid var(--border);
+  border-radius: 4px; cursor: pointer; overflow: hidden;
+}
+.tile:hover { background: var(--accent-light); }
+.tile .stripe { width: 6px; flex-shrink: 0; }
+.tile .tile-body { padding: 12px 18px; }
+.tile .tile-title { font-family: Georgia, serif; font-weight: bold; font-size: calc(16px * var(--font-scale)); }
+.tile .tile-desc { color: var(--muted); font-size: calc(13px * var(--font-scale)); margin-top: 2px; }
+
+/* Buttons */
+.btn { border: none; border-radius: 4px; padding: 10px 18px; font-weight: 700; }
+.btn-accent { background: var(--accent); color: white; }
+.btn-accent:hover { background: var(--accent-dark); }
+.btn-outline { background: none; border: 1px solid var(--border); color: var(--text); padding: 9px 17px; border-radius: 4px; font-weight: 700; }
+.btn-outline:hover { background: var(--accent-light); }
+.toggle-btn { background: white; border: 1px solid var(--border); border-radius: 4px; padding: 12px 20px; font-weight: 700; margin-right: 8px; }
+.toggle-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+input[type=text], input[type=number] {
+  border: 1px solid var(--border); border-radius: 4px; padding: 8px 10px; font-size: inherit;
+  background: var(--card); color: var(--text); width: 140px;
+}
+label.radio { font-weight: 600; margin-right: 14px; }
+
+/* progress bar */
+.progress-track { background: var(--border); border-radius: 6px; height: 8px; width: 300px; max-width: 60vw; overflow: hidden; }
+.progress-fill { background: var(--accent); height: 100%; }
+.step-label { font-weight: 700; color: var(--accent-dark); margin-bottom: 6px; }
+
+/* agency picker */
+.region-head { font-family: Georgia, serif; font-weight: bold; color: var(--accent-dark); margin: 14px 0 4px 0; }
+.agency-option { display: block; margin: 3px 0 3px 12px; cursor: pointer; }
+
+/* table */
+table.fdpir-table { border-collapse: collapse; width: 100%; margin-top: 6px; font-size: calc(13px * var(--font-scale)); }
+table.fdpir-table th { background: var(--accent-dark); color: white; padding: 8px; text-align: center; }
+table.fdpir-table th:first-child, table.fdpir-table th.left { text-align: left; }
+table.fdpir-table td { padding: 7px 8px; text-align: center; border-bottom: 1px solid var(--border); }
+table.fdpir-table td.left { text-align: left; }
+table.fdpir-table tr:nth-child(odd) td { background: var(--row-alt); }
+.table-wrap { overflow-x: auto; }
+
+/* chips */
+.chip { display: inline-block; padding: 3px 9px; border-radius: 20px; font-size: calc(11px * var(--font-scale));
+  font-weight: 700; color: white; margin: 0 4px 4px 0; }
+.chip-toggle { background: var(--border); color: var(--text); cursor: pointer; user-select: none; }
+.chip-toggle.active-tag { background: var(--accent); color: white; }
+.chip-toggle.active-allergen { background: var(--warn); color: white; }
+
+/* recipes grid */
+#recipe-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 300px)); gap: 14px; justify-content: center; margin-top: 12px; }
+@media (max-width: 900px) { #recipe-grid { grid-template-columns: repeat(2, minmax(0, 300px)); } }
+@media (max-width: 620px) { #recipe-grid { grid-template-columns: minmax(0, 1fr); } }
+.recipe-card { background: var(--card); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; display: flex; flex-direction: column; }
+.recipe-card .stripe { height: 6px; }
+.recipe-card .rc-body { padding: 14px 16px; flex: 1; display: flex; flex-direction: column; }
+.recipe-card h3 { margin: 0 0 4px 0; font-size: calc(15px * var(--font-scale)); font-family: Helvetica, sans-serif; font-weight: 700; }
+.recipe-card .rc-desc { color: var(--muted); font-size: calc(13px * var(--font-scale)); margin-bottom: 6px; }
+.recipe-card .rc-stats { color: var(--muted); font-size: calc(11.5px * var(--font-scale)); margin-bottom: 8px; }
+.recipe-card .rc-missing { color: var(--warn); font-size: calc(11.5px * var(--font-scale)); margin-bottom: 8px; }
+
+/* modal */
+#modal-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex;
+  align-items: center; justify-content: center; z-index: 50; padding: 20px;
+}
+#modal { background: var(--bg); border-radius: 6px; max-width: 560px; width: 100%; max-height: 86vh;
+  overflow-y: auto; padding: 24px; position: relative; }
+#modal .modal-close { position: absolute; top: 14px; right: 16px; background: none; border: none;
+  font-size: calc(20px * var(--font-scale)); color: var(--muted); cursor: pointer; }
+
+/* locator */
+.site-card { background: var(--card); border: 1px solid var(--border); border-radius: 4px; padding: 14px 16px; margin-bottom: 10px; }
+.gas-box { background: var(--accent-light); border-radius: 4px; padding: 10px 12px; margin-top: 10px; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; }
+
+@media (max-width: 720px) {
+  #shell { flex-direction: column; }
+  #sidebar { width: 100%; flex: none; flex-direction: row; overflow-x: auto; padding: 8px 0; align-items: center; }
+  #sidebar .brand { padding: 0 12px; margin-bottom: 0; white-space: nowrap; }
+  #sidebar .spacer { display: none; }
+  .nav-item { white-space: nowrap; }
+  #reset-household { border-top: none; border-left: 1px solid var(--border); margin: 0 12px; padding: 8px 12px; }
+  #content { padding: 16px; }
+}
+</style>
+</head>
+<body>
+<div id="accent-strip"></div>
+<div id="topbar">
+  <span>Text size:</span>
+  <button class="ghost-btn" onclick="adjustFontScale(-0.1)">A−</button>
+  <button class="ghost-btn" onclick="adjustFontScale(null)">Reset</button>
+  <button class="ghost-btn" onclick="adjustFontScale(0.1)">A+</button>
+</div>
+<div id="shell">
+  <nav id="sidebar">
+    <div class="brand">Ground<br>Truth</div>
+    <div class="nav-item" data-page="home" onclick="showPage('home')">Home</div>
+    <div class="nav-item" data-page="calculator" onclick="showPage('calculator')">Calculator</div>
+    <div class="nav-item" data-page="finances" onclick="showPage('finances')">Finances</div>
+    <div class="nav-item" data-page="recipes" onclick="showPage('recipes')">Recipes</div>
+    <div class="nav-item" data-page="locator" onclick="showPage('locator')">Locator</div>
+    <div class="nav-item" data-page="about" onclick="showPage('about')">About</div>
+    <div class="spacer"></div>
+    <div id="reset-household" onclick="resetHousehold()">Reset household</div>
+  </nav>
+  <main id="content">
+    <div id="page-home" class="page"></div>
+    <div id="page-calculator" class="page hidden"></div>
+    <div id="page-finances" class="page hidden"></div>
+    <div id="page-recipes" class="page hidden"></div>
+    <div id="page-locator" class="page hidden"></div>
+    <div id="page-about" class="page hidden"></div>
+  </main>
+</div>
+
+<script>
+/* ===================== LOGIC LAYER (tested standalone in logic.js) ===================== */
+// ===========================================================================
+// DATA LAYER — mirrors the desktop Python app's data exactly
+// ===========================================================================
+
+const FOOD_ITEMS = {
+  "Canned chicken":          { unit: "12oz can",    servingsPerUnit: 3,  kcal: 70,  protein: 13, carbs: 0,  fat: 2,  sodium: 270, sugar: 0,  category: "protein", unitCost: 2.50, mealReady: true },
+  "Frozen ground beef":      { unit: "1 lb",         servingsPerUnit: 4,  kcal: 280, protein: 19, carbs: 0,  fat: 22, sodium: 75,  sugar: 0,  category: "protein", unitCost: 4.50, mealReady: true },
+  "Canned salmon":           { unit: "14.75oz can",  servingsPerUnit: 3,  kcal: 150, protein: 20, carbs: 0,  fat: 7,  sodium: 380, sugar: 0,  category: "protein", unitCost: 3.50, mealReady: true },
+  "Peanut butter":           { unit: "18oz jar",     servingsPerUnit: 27, kcal: 190, protein: 8,  carbs: 7,  fat: 16, sodium: 140, sugar: 3,  category: "protein", unitCost: 3.00, mealReady: true },
+  "Pinto beans (dry)":       { unit: "1 lb bag",     servingsPerUnit: 12, kcal: 160, protein: 10, carbs: 30, fat: 1,  sodium: 5,   sugar: 1,  category: "protein", unitCost: 1.50, mealReady: true },
+  "Eggs (shelf-stable)":     { unit: "dozen",        servingsPerUnit: 12, kcal: 70,  protein: 6,  carbs: 0,  fat: 5,  sodium: 65,  sugar: 0,  category: "protein", unitCost: 3.00, mealReady: true },
+  "Whole wheat flour":       { unit: "5 lb bag",     servingsPerUnit: 75, kcal: 100, protein: 4,  carbs: 22, fat: 0,  sodium: 0,   sugar: 0,  category: "grain",   unitCost: 3.50, mealReady: false },
+  "Brown rice":              { unit: "2 lb bag",     servingsPerUnit: 20, kcal: 160, protein: 4,  carbs: 34, fat: 1,  sodium: 5,   sugar: 0,  category: "grain",   unitCost: 2.50, mealReady: true },
+  "Oats":                    { unit: "42oz box",     servingsPerUnit: 30, kcal: 150, protein: 5,  carbs: 27, fat: 3,  sodium: 0,   sugar: 1,  category: "grain",   unitCost: 3.50, mealReady: true },
+  "Corn flakes cereal":      { unit: "18oz box",     servingsPerUnit: 18, kcal: 100, protein: 2,  carbs: 24, fat: 0,  sodium: 200, sugar: 3,  category: "grain",   unitCost: 4.00, mealReady: false },
+  "Frozen mixed vegetables": { unit: "2 lb bag",     servingsPerUnit: 11, kcal: 60,  protein: 2,  carbs: 12, fat: 0,  sodium: 40,  sugar: 3,  category: "produce", unitCost: 2.00, mealReady: true },
+  "Canned green beans":      { unit: "14.5oz can",   servingsPerUnit: 4,  kcal: 20,  protein: 1,  carbs: 4,  fat: 0,  sodium: 390, sugar: 1,  category: "produce", unitCost: 1.00, mealReady: true },
+  "Canned tomatoes":         { unit: "14.5oz can",   servingsPerUnit: 4,  kcal: 25,  protein: 1,  carbs: 5,  fat: 0,  sodium: 300, sugar: 3,  category: "produce", unitCost: 1.20, mealReady: true },
+  "Frozen fruit blend":      { unit: "2 lb bag",     servingsPerUnit: 8,  kcal: 90,  protein: 1,  carbs: 22, fat: 0,  sodium: 5,   sugar: 17, category: "produce", unitCost: 3.50, mealReady: true },
+  "Canned peaches":          { unit: "15oz can",     servingsPerUnit: 3,  kcal: 100, protein: 1,  carbs: 24, fat: 0,  sodium: 10,  sugar: 21, category: "produce", unitCost: 1.80, mealReady: true },
+  "Shelf-stable milk":       { unit: "1 qt",         servingsPerUnit: 4,  kcal: 100, protein: 8,  carbs: 12, fat: 2,  sodium: 100, sugar: 12, category: "dairy",   unitCost: 1.50, mealReady: true },
+  "Cheese block":            { unit: "2 lb",         servingsPerUnit: 32, kcal: 110, protein: 7,  carbs: 1,  fat: 9,  sodium: 180, sugar: 0,  category: "dairy",   unitCost: 6.00, mealReady: true },
+  "Vegetable oil":           { unit: "48oz bottle",  servingsPerUnit: 96, kcal: 120, protein: 0,  carbs: 0,  fat: 14, sodium: 0,   sugar: 0,  category: "fat",     unitCost: 5.00, mealReady: true },
+  "Butter":                  { unit: "1 lb",         servingsPerUnit: 32, kcal: 100, protein: 0,  carbs: 0,  fat: 11, sodium: 90,  sugar: 0,  category: "fat",     unitCost: 4.00, mealReady: true },
+};
+
+function costPerServing(itemName) {
+  const info = FOOD_ITEMS[itemName];
+  return info.unitCost / info.servingsPerUnit;
+}
+
+const DEFAULT_FOOD_PACKAGES = {
+  "Navajo Nation FDPIR": {
+    region: "Southwest",
+    sourceNote: "Illustrative — replace with the agency's current published monthly list.",
+    items: { "Canned chicken": 2, "Frozen ground beef": 2, "Peanut butter": 1, "Pinto beans (dry)": 2,
+             "Eggs (shelf-stable)": 1, "Whole wheat flour": 1, "Brown rice": 1, "Oats": 1,
+             "Frozen mixed vegetables": 2, "Canned green beans": 3, "Canned tomatoes": 2,
+             "Frozen fruit blend": 1, "Canned peaches": 2, "Shelf-stable milk": 4, "Cheese block": 1,
+             "Vegetable oil": 1 },
+  },
+  "Oglala Sioux FDPIR": {
+    region: "Great Plains",
+    sourceNote: "Illustrative — replace with the agency's current published monthly list.",
+    items: { "Canned salmon": 2, "Frozen ground beef": 1, "Peanut butter": 2, "Pinto beans (dry)": 1,
+             "Eggs (shelf-stable)": 1, "Brown rice": 2, "Corn flakes cereal": 1, "Frozen mixed vegetables": 1,
+             "Canned green beans": 2, "Canned tomatoes": 1, "Canned peaches": 2, "Shelf-stable milk": 4,
+             "Cheese block": 1, "Butter": 1 },
+  },
+  "Choctaw Nation FDPIR": {
+    region: "Oklahoma",
+    sourceNote: "Illustrative — replace with the Choctaw Nation's current published monthly list.",
+    items: { "Canned chicken": 2, "Peanut butter": 1, "Pinto beans (dry)": 2, "Brown rice": 2, "Oats": 1,
+             "Frozen mixed vegetables": 2, "Canned tomatoes": 2, "Canned peaches": 2, "Shelf-stable milk": 4,
+             "Cheese block": 1, "Vegetable oil": 1 },
+  },
+  "Cherokee Nation FDPIR": {
+    region: "Oklahoma",
+    sourceNote: "Illustrative — replace with the Cherokee Nation's current published monthly list.",
+    items: { "Frozen ground beef": 2, "Canned salmon": 1, "Peanut butter": 1, "Pinto beans (dry)": 1,
+             "Eggs (shelf-stable)": 1, "Brown rice": 1, "Corn flakes cereal": 1, "Frozen mixed vegetables": 1,
+             "Canned green beans": 2, "Frozen fruit blend": 1, "Shelf-stable milk": 4, "Cheese block": 1,
+             "Butter": 1 },
+  },
+  "Chickasaw Nation FDPIR": {
+    region: "Oklahoma",
+    sourceNote: "Illustrative — replace with the Chickasaw Nation's current published monthly list.",
+    items: { "Canned chicken": 1, "Canned salmon": 1, "Peanut butter": 2, "Pinto beans (dry)": 1,
+             "Whole wheat flour": 1, "Brown rice": 1, "Frozen mixed vegetables": 1, "Canned tomatoes": 1,
+             "Canned peaches": 1, "Frozen fruit blend": 1, "Shelf-stable milk": 3, "Cheese block": 1,
+             "Vegetable oil": 1 },
+  },
+  "Muscogee (Creek) Nation FDPIR": {
+    region: "Oklahoma",
+    sourceNote: "Illustrative — replace with the Muscogee (Creek) Nation's current published monthly list.",
+    items: { "Frozen ground beef": 1, "Canned chicken": 1, "Peanut butter": 1, "Pinto beans (dry)": 2,
+             "Eggs (shelf-stable)": 1, "Oats": 1, "Corn flakes cereal": 1, "Frozen mixed vegetables": 2,
+             "Canned green beans": 1, "Canned tomatoes": 1, "Canned peaches": 1, "Shelf-stable milk": 3,
+             "Butter": 1, "Vegetable oil": 1 },
+  },
+  "State-administered FDPIR (example)": {
+    region: "Other",
+    sourceNote: "Illustrative — replace with the agency's current published monthly list.",
+    items: { "Canned chicken": 1, "Canned salmon": 1, "Peanut butter": 1, "Pinto beans (dry)": 1,
+             "Whole wheat flour": 1, "Oats": 1, "Corn flakes cereal": 1, "Frozen mixed vegetables": 2,
+             "Canned tomatoes": 2, "Frozen fruit blend": 1, "Shelf-stable milk": 3, "Cheese block": 1,
+             "Vegetable oil": 1 },
+  },
+};
+
+// Mutable — an imported agency file (JSON, via file upload) can add to this.
+let FOOD_PACKAGES = JSON.parse(JSON.stringify(DEFAULT_FOOD_PACKAGES));
+
+const PREFERRED_REGION_ORDER = ["Southwest", "Great Plains", "Oklahoma", "Other"];
+
+function getAgencyRegions() {
+  const present = new Set(Object.values(FOOD_PACKAGES).map(p => p.region));
+  const ordered = PREFERRED_REGION_ORDER.filter(r => present.has(r));
+  const extra = [...present].filter(r => !PREFERRED_REGION_ORDER.includes(r)).sort();
+  return [...ordered, ...extra];
+}
+
+function importAgencyPackages(raw) {
+  // raw: parsed JSON, same shape as the desktop app's food_packages.json.
+  // Unknown item names are dropped; malformed entries are skipped. Returns
+  // the number of agencies actually imported.
+  let count = 0;
+  for (const [agencyName, entry] of Object.entries(raw || {})) {
+    if (!entry || typeof entry !== "object" || !entry.items) continue;
+    const items = {};
+    for (const [itemName, qty] of Object.entries(entry.items)) {
+      if (FOOD_ITEMS[itemName] && typeof qty === "number" && qty > 0) items[itemName] = qty;
+    }
+    if (Object.keys(items).length > 0) {
+      FOOD_PACKAGES[agencyName] = {
+        region: entry.region || "Other",
+        sourceNote: entry.sourceNote || `Loaded from an imported file.`,
+        items,
+      };
+      count++;
+    }
+  }
+  return count;
+}
+
+const DAILY_SODIUM_GUIDELINE_MG = 2300;
+const DAILY_ADDED_SUGAR_GUIDELINE_G = 50;
+const DAYS_PER_MONTH = 30;
+const WEEKS_PER_MONTH = DAYS_PER_MONTH / 7;
+
+const EXPENSE_CATEGORIES = ["Housing (rent/mortgage)", "Utilities", "Transportation",
+                            "Travel to distribution site", "Other essentials"];
+
+const GAS_PRICE_PER_GALLON = 4.06; // U.S. DOT/BTS national average, August 2026
+const ASSUMED_MPG = 25;
+
+function estimateMonthlyGasCost(roundTripMiles, tripsPerMonth) {
+  return tripsPerMonth * (roundTripMiles / ASSUMED_MPG) * GAS_PRICE_PER_GALLON;
+}
+
+// 2026 HHS poverty guidelines, 48 contiguous states: $15,960 base + $5,680
+// per additional person. USDA NSLP: free meals at 130% of this, reduced at 185%.
+const FPL_BASE_1PERSON_ANNUAL = 15960;
+const FPL_INCREMENT_PER_PERSON_ANNUAL = 5680;
+const NSLP_FREE_MULTIPLIER = 1.30;
+const NSLP_REDUCED_MULTIPLIER = 1.85;
+
+function nslpIncomeThresholdsMonthly(householdSize) {
+  const annualFpl = FPL_BASE_1PERSON_ANNUAL + FPL_INCREMENT_PER_PERSON_ANNUAL * (householdSize - 1);
+  return {
+    free: (annualFpl * NSLP_FREE_MULTIPLIER) / 12,
+    reduced: (annualFpl * NSLP_REDUCED_MULTIPLIER) / 12,
+  };
+}
+
+// --- Recipes -----------------------------------------------------------------
+const RECIPES = [
+  { name: "Chicken and Rice Skillet",
+    description: "A one-pan dinner built around canned chicken and rice.",
+    ingredients: [["Canned chicken", 2], ["Brown rice", 2], ["Frozen mixed vegetables", 1], ["Vegetable oil", 1]],
+    steps: ["Cook the rice according to the package directions.",
+            "Warm the oil in a skillet over medium heat.",
+            "Add the canned chicken and frozen vegetables and cook until heated through, about 5 minutes.",
+            "Stir in the cooked rice and mix well.",
+            "Season with whatever you have on hand and serve warm."],
+    yields: 4, allergens: [], bestFor: ["Kid-friendly", "Dairy-free"] },
+
+  { name: "Bean and Tomato Rice Bowl",
+    description: "A filling, meat-free bowl using pinto beans, rice, and tomatoes.",
+    ingredients: [["Pinto beans (dry)", 2], ["Brown rice", 2], ["Canned tomatoes", 2], ["Vegetable oil", 1]],
+    steps: ["Soak the dry pinto beans (overnight if possible), then simmer in fresh water until tender, 60-90 minutes.",
+            "Cook the rice according to the package directions.",
+            "Warm the oil in a saucepan, add the canned tomatoes, and simmer for 5 minutes.",
+            "Stir the cooked beans into the tomatoes and simmer together for another 5 minutes.",
+            "Serve the bean-and-tomato mixture over the rice."],
+    yields: 4, allergens: [], bestFor: ["Vegetarian", "Dairy-free", "Kid-friendly"] },
+
+  { name: "Salmon Vegetable Soup",
+    description: "A simple simmered soup that stretches canned salmon across a full pot.",
+    ingredients: [["Canned salmon", 2], ["Frozen mixed vegetables", 2], ["Canned tomatoes", 1], ["Brown rice", 1]],
+    steps: ["Bring a pot of water to a simmer and add the frozen vegetables and canned tomatoes.",
+            "Simmer for 10 minutes, until the vegetables are tender.",
+            "Stir in the rice and cook until done, about 20 minutes (add more water as needed).",
+            "Flake in the canned salmon during the last 5 minutes, just to heat through.",
+            "Season to taste and serve hot."],
+    yields: 4, allergens: ["Fish"], bestFor: ["Elder-friendly (soft texture)"] },
+
+  { name: "Peanut Butter Oatmeal Breakfast",
+    description: "A quick, filling breakfast that uses shelf-stable pantry staples.",
+    ingredients: [["Oats", 4], ["Peanut butter", 2], ["Shelf-stable milk", 4], ["Frozen fruit blend", 2]],
+    steps: ["Bring the milk to a gentle simmer in a saucepan.",
+            "Stir in the oats and cook, stirring occasionally, until thickened (about 5 minutes).",
+            "Stir in the peanut butter until fully melted and combined.",
+            "Top each bowl with the frozen fruit blend and serve."],
+    yields: 4, allergens: ["Peanuts", "Dairy"], bestFor: ["Kid-friendly"] },
+
+  { name: "Cheesy Rice and Beans",
+    description: "A hearty, kid-friendly plate built from pantry basics.",
+    ingredients: [["Brown rice", 2], ["Pinto beans (dry)", 2], ["Cheese block", 4], ["Canned green beans", 2]],
+    steps: ["Cook the rice according to the package directions.",
+            "Soak and simmer the pinto beans until tender (or substitute canned beans if you have them).",
+            "Warm the canned green beans in a small saucepan.",
+            "Combine the rice and beans in a serving dish and top with the cheese.",
+            "Serve with the warmed green beans on the side."],
+    yields: 4, allergens: ["Dairy"], bestFor: ["Vegetarian", "Kid-friendly"] },
+
+  { name: "Egg and Vegetable Scramble",
+    description: "A simple scramble that works for breakfast, lunch, or dinner.",
+    ingredients: [["Eggs (shelf-stable)", 4], ["Frozen mixed vegetables", 2], ["Cheese block", 2], ["Vegetable oil", 1]],
+    steps: ["Warm the oil in a skillet over medium heat.",
+            "Add the frozen vegetables and cook until thawed and slightly softened, about 4 minutes.",
+            "Beat the eggs and pour them into the skillet with the vegetables.",
+            "Scramble gently until just set, then sprinkle cheese on top.",
+            "Remove from heat once the cheese melts and serve."],
+    yields: 4, allergens: ["Eggs", "Dairy"], bestFor: ["Kid-friendly", "Elder-friendly (soft texture)"] },
+
+  { name: "Dairy-Free Peach Oatmeal",
+    description: "A softer, dairy-free breakfast built around oats and canned peaches.",
+    ingredients: [["Oats", 4], ["Canned peaches", 3], ["Vegetable oil", 1]],
+    steps: ["Cook the oats in water according to the package directions.",
+            "Stir in a small spoon of oil for richness (optional).",
+            "Top with canned peaches (and a little of their juice) and serve warm."],
+    yields: 4, allergens: [], bestFor: ["Dairy-free", "Vegetarian", "Elder-friendly (soft texture)"] },
+
+  { name: "Salmon and Green Bean Plate",
+    description: "A quick, low-carb plate for using up canned salmon and green beans.",
+    ingredients: [["Canned salmon", 3], ["Canned green beans", 3], ["Vegetable oil", 1]],
+    steps: ["Warm the oil in a skillet over medium heat.",
+            "Add the canned green beans and cook until heated through, about 3 minutes.",
+            "Flake in the canned salmon and warm gently, stirring occasionally.",
+            "Season to taste and serve."],
+    yields: 4, allergens: ["Fish"], bestFor: ["Low-carb", "Dairy-free"] },
+];
+
+const ALL_DIETARY_TAGS = [...new Set(RECIPES.flatMap(r => r.bestFor))].sort();
+const ALL_ALLERGENS = [...new Set(RECIPES.flatMap(r => r.allergens))].sort();
+
+function computeRecipeTotals(recipe) {
+  let cost = 0, kcal = 0, protein = 0, carbs = 0, fat = 0;
+  for (const [itemName, servingsUsed] of recipe.ingredients) {
+    const info = FOOD_ITEMS[itemName];
+    cost += servingsUsed * costPerServing(itemName);
+    kcal += servingsUsed * info.kcal;
+    protein += servingsUsed * info.protein;
+    carbs += servingsUsed * info.carbs;
+    fat += servingsUsed * info.fat;
+  }
+  return { cost, kcal, protein, carbs, fat };
+}
+
+function recipePerServing(totals, servings) {
+  return { cost: totals.cost / servings, kcal: totals.kcal / servings,
+           protein: totals.protein / servings, carbs: totals.carbs / servings, fat: totals.fat / servings };
+}
+
+function missingIngredients(recipe, agencyKey) {
+  const pkg = FOOD_PACKAGES[agencyKey];
+  if (!pkg) return [];
+  return recipe.ingredients.filter(([name]) => !(name in pkg.items)).map(([name]) => name);
+}
+
+function recipeFitsPackage(recipe, agencyKey) {
+  // Allows one missing ingredient — a single substitution, not a reason to
+  // hide the recipe. A perfect-match requirement zeroed out every recipe
+  // for at least one real package that was only missing a couple of items.
+  return missingIngredients(recipe, agencyKey).length <= 1;
+}
+
+// --- Calculation layer -------------------------------------------------------
+
+function scaleFactor(householdSize) {
+  return Math.max(householdSize, 1) / 4.0;
+}
+
+function totalsForPackage(agencyKey, householdSize) {
+  const pkg = FOOD_PACKAGES[agencyKey];
+  const factor = scaleFactor(householdSize);
+  let totalKcal = 0, totalProtein = 0, totalCarbs = 0, totalFat = 0;
+  let totalSodium = 0, totalSugar = 0, totalCost = 0, produceKcal = 0;
+  const lines = [];
+
+  for (const [itemName, monthlyQty] of Object.entries(pkg.items)) {
+    const info = FOOD_ITEMS[itemName];
+    const scaledQty = monthlyQty * factor;
+    const servingsTotal = scaledQty * info.servingsPerUnit;
+
+    const kcal = info.kcal * servingsTotal;
+    const protein = info.protein * servingsTotal;
+    const carbs = info.carbs * servingsTotal;
+    const fat = info.fat * servingsTotal;
+    const sodium = info.sodium * servingsTotal;
+    const sugar = info.sugar * servingsTotal;
+    const cost = info.unitCost * scaledQty;
+
+    totalKcal += kcal; totalProtein += protein; totalCarbs += carbs; totalFat += fat;
+    totalSodium += sodium; totalSugar += sugar; totalCost += cost;
+    if (info.category === "produce") produceKcal += kcal;
+
+    lines.push({
+      item: itemName, qty: Math.round(scaledQty * 10) / 10, unit: info.unit,
+      servingsTotal: Math.round(servingsTotal * 10) / 10,
+      kcalTotal: Math.round(kcal), proteinTotal: Math.round(protein),
+      carbsTotal: Math.round(carbs), fatTotal: Math.round(fat), costTotal: Math.round(cost * 100) / 100,
+      perServingKcal: info.kcal, perServingProtein: info.protein, perServingCarbs: info.carbs, perServingFat: info.fat,
+    });
+  }
+
+  return {
+    kcal: totalKcal, protein: totalProtein, carbs: totalCarbs, fat: totalFat,
+    sodium: totalSodium, sugar: totalSugar,
+    produceSharePct: totalKcal ? (produceKcal / totalKcal) * 100 : 0,
+    totalCost: Math.round(totalCost * 100) / 100,
+    lines,
+  };
+}
+
+function perDay(monthlyTotal) { return monthlyTotal / DAYS_PER_MONTH; }
+function perWeek(monthlyTotal) { return monthlyTotal / WEEKS_PER_MONTH; }
+
+// frequency: "monthly" | "yearly" | "lump"
+function normalizeIncomeToMonthly(amount, frequency, lumpMonthsCovered) {
+  if (frequency === "yearly") return amount / 12;
+  if (frequency === "lump") return amount / Math.max(1, lumpMonthsCovered || 1);
+  return amount;
+}
+
+function computeBudget(monthlyIncome, expenses, programValue) {
+  const totalExpenses = Object.values(expenses).reduce((a, b) => a + b, 0);
+  const leftover = monthlyIncome - totalExpenses;
+  return {
+    monthlyIncome, totalExpenses, programValue,
+    leftoverCash: leftover, weeklyLeftoverCash: leftover / WEEKS_PER_MONTH,
+    isShortfall: leftover < 0,
+  };
+}
+
+// --- Locator -----------------------------------------------------------------
+const FDPIR_SITES = [
+  { agency: "Navajo Nation FDPIR", address: "Example Distribution Center, Window Rock, AZ 86515 (placeholder address)", phone: "(555) 555-0101", hours: "Mon-Fri 8:00am-4:30pm (example hours)", lat: 35.6805, lon: -109.0523 },
+  { agency: "Oglala Sioux FDPIR", address: "Example Distribution Center, Pine Ridge, SD 57770 (placeholder address)", phone: "(555) 555-0102", hours: "Mon-Fri 8:00am-4:30pm (example hours)", lat: 43.0247, lon: -102.5477 },
+  { agency: "Choctaw Nation FDPIR", address: "Example Distribution Center, Durant, OK 74701 (placeholder address)", phone: "(555) 555-0104", hours: "Mon-Fri 8:00am-4:30pm (example hours)", lat: 33.9943, lon: -96.3708 },
+  { agency: "Cherokee Nation FDPIR", address: "Example Distribution Center, Tahlequah, OK 74464 (placeholder address)", phone: "(555) 555-0105", hours: "Mon-Fri 8:00am-4:30pm (example hours)", lat: 35.9151, lon: -94.9702 },
+  { agency: "Chickasaw Nation FDPIR", address: "Example Distribution Center, Ada, OK 74820 (placeholder address)", phone: "(555) 555-0106", hours: "Mon-Fri 8:00am-4:30pm (example hours)", lat: 34.7745, lon: -96.6783 },
+  { agency: "Muscogee (Creek) Nation FDPIR", address: "Example Distribution Center, Okmulgee, OK 74447 (placeholder address)", phone: "(555) 555-0107", hours: "Mon-Fri 8:00am-4:30pm (example hours)", lat: 35.6234, lon: -95.9581 },
+  { agency: "State-administered FDPIR (example)", address: "Example State FDPIR Office, Madison, WI 53703 (placeholder address)", phone: "(555) 555-0103", hours: "Mon-Fri 8:00am-4:30pm (example hours)", lat: 43.0731, lon: -89.4012 },
+];
+
+const ZIP_COORDINATES = {
+  "86515": [35.68, -109.05], "87301": [35.53, -108.74], "57770": [43.02, -102.55],
+  "57701": [44.08, -103.23], "53703": [43.07, -89.38], "60601": [41.88, -87.63],
+  "74701": [33.99, -96.37], "74464": [35.92, -94.97], "74820": [34.77, -96.68],
+  "74447": [35.62, -95.96], "73102": [35.47, -97.52], "74103": [36.15, -95.99],
+  "73501": [34.60, -98.40], "74501": [34.93, -95.77],
+};
+
+function haversineMiles(lat1, lon1, lat2, lon2) {
+  const r = 3958.8;
+  const toRad = d => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return r * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function findNearestSites(zipCode) {
+  const coords = ZIP_COORDINATES[zipCode.trim()];
+  if (!coords) return null;
+  const [lat, lon] = coords;
+  return FDPIR_SITES.map(site => ({ site, distance: haversineMiles(lat, lon, site.lat, site.lon) }))
+    .sort((a, b) => a.distance - b.distance);
+}
+
+
+/* ===================== END LOGIC LAYER ===================== */
+</script>
+<script>
+/* ===================== STATE ===================== */
+const state = {
+  householdSize: 4,
+  program: null,           // "FDPIR" | "SNAP"
+  agencyKey: Object.keys(FOOD_PACKAGES)[0],
+  snapBalance: 0,
+  salaryAmount: 0,
+  salaryFrequency: "monthly",  // "monthly" | "yearly" | "lump"
+  lumpMonthsCovered: 6,
+  expenses: {},
+  hasSchoolAgeChildren: false,
+  sharedGasCost: null,
+  lastBudget: null,
+};
+let fontScale = 1.0;
+let calcStep = 1;
+const CALC_TOTAL_STEPS = 4;
+let financesSetupExpanded = false;
+let recipeFilters = { fitOnly: true, tags: new Set(), excludeAllergens: new Set() };
+let locatorLastZip = "";
+let locatorLastResults = null;
+
+/* ===================== HELPERS ===================== */
+function el(tag, props = {}, children = []) {
+  const e = document.createElement(tag);
+  Object.entries(props).forEach(([k, v]) => {
+    if (k === "class") e.className = v;
+    else if (k === "for") e.setAttribute("for", v);
+    else if (k.startsWith("on") && typeof v === "function") e.addEventListener(k.slice(2), v);
+    else e.setAttribute(k, v);
+  });
+  (Array.isArray(children) ? children : [children]).forEach(c => {
+    if (c == null) return;
+    e.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+  });
+  return e;
+}
+function clear(container) { while (container.firstChild) container.removeChild(container.firstChild); }
+function fmt0(n) { return Math.round(n).toLocaleString(); }
+function fmt2(n) { return n.toFixed(2); }
+
+function applyUrlParams() {
+  const params = new URLSearchParams(location.search);
+  const hh = parseInt(params.get("household"), 10);
+  if (hh >= 1 && hh <= 12) state.householdSize = hh;
+  const program = params.get("program");
+  if (program === "FDPIR" || program === "SNAP") state.program = program;
+  const agency = params.get("agency");
+  if (agency && FOOD_PACKAGES[agency]) state.agencyKey = agency;
+}
+
+function getShareableLink() {
+  // Deliberately never includes income or expenses — only the household
+  // setup, which is what's actually useful to bookmark or hand to someone
+  // else (a caseworker suggesting "start from this agency"), never the
+  // financial details.
+  const params = new URLSearchParams();
+  params.set("household", state.householdSize);
+  if (state.program) params.set("program", state.program);
+  if (state.program === "FDPIR") params.set("agency", state.agencyKey);
+  const url = new URL(location.href);
+  url.search = params.toString();
+  url.hash = "finances";
+  return url.toString();
+}
+
+async function copyTextToClipboard(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (e) {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.focus(); ta.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      return ok;
+    } catch (e2) {
+      return false;
+    }
+  }
+}
+
+/* ===================== ROUTER ===================== */
+const VALID_PAGES = ["home", "calculator", "finances", "recipes", "locator", "about"];
+
+function showPage(name) {
+  if (location.hash.slice(1) !== name) location.hash = name;
+  activatePage(name); // instant — don't wait on the async hashchange event below
+}
+
+function activatePage(name) {
+  document.querySelectorAll(".page").forEach(p => p.classList.add("hidden"));
+  document.getElementById("page-" + name).classList.remove("hidden");
+  document.querySelectorAll(".nav-item").forEach(n => n.classList.toggle("active", n.dataset.page === name));
+  if (name === "home") renderHome();
+  else if (name === "calculator") renderCalculator();
+  else if (name === "finances") renderFinances();
+  else if (name === "recipes") renderRecipes();
+  else if (name === "locator") renderLocator();
+  else if (name === "about") renderAbout();
+}
+
+window.addEventListener("hashchange", () => {
+  const name = location.hash.slice(1);
+  activatePage(VALID_PAGES.includes(name) ? name : "home");
+});
+
+function adjustFontScale(delta) {
+  fontScale = delta === null ? 1.0 : Math.max(0.85, Math.min(1.5, fontScale + delta));
+  document.documentElement.style.setProperty("--font-scale", fontScale);
+}
+
+function resetHousehold() {
+  if (!confirm("This clears your household size, program, income, and expenses. Continue?")) return;
+  Object.assign(state, {
+    householdSize: 4, program: null, agencyKey: Object.keys(FOOD_PACKAGES)[0], snapBalance: 0,
+    salaryAmount: 0, salaryFrequency: "monthly", lumpMonthsCovered: 6, expenses: {},
+    hasSchoolAgeChildren: false, sharedGasCost: null, lastBudget: null,
+  });
+  calcStep = 1;
+  financesSetupExpanded = false;
+  showPage("home");
+}
+
+/* ===================== HOME ===================== */
+function renderHome() {
+  const root = document.getElementById("page-home");
+  clear(root);
+  const wrap = el("div", { id: "home-wrap" });
+
+  const blobs = [
+    { top: "-60px", left: "-60px", w: "220px", c: "var(--accent-light)" },
+    { top: "-60px", right: "-60px", w: "200px", c: "#e7ded0" },
+    { bottom: "-80px", left: "-40px", w: "200px", c: "#eef1e6" },
+    { bottom: "-80px", right: "-60px", w: "220px", c: "#e3e8d6" },
+  ];
+  blobs.forEach(p => {
+    const style = `width:${p.w};height:${p.w};background:${p.c};` +
+      Object.entries(p).filter(([k]) => !["w", "c"].includes(k)).map(([k, v]) => `${k}:${v}`).join(";");
+    wrap.appendChild(el("div", { class: "bg-blob", style }));
+  });
+
+  wrap.appendChild(el("div", { class: "home-header" }, [
+    el("h1", {}, "GroundTruth"),
+    el("p", { class: "muted", style: "font-weight:700;color:var(--accent-dark);margin-top:2px;font-size:calc(15px * var(--font-scale));" }, "The Household Food Navigator"),
+    el("p", { class: "muted", style: "max-width:640px;margin-top:6px;" },
+      "Compare food programs in real dollars, budget around them, find recipes, and locate a distribution site — all in your browser."),
+    el("p", { class: "small", style: "margin-top:8px;" },
+      `Runs entirely in this tab · data last bundled ${new Date().toISOString().slice(0, 10)}`),
+  ]));
+
+  const statusDiv = el("div", { id: "status-strip-area" });
+  wrap.appendChild(statusDiv);
+  renderStatusStrip(statusDiv);
+
+  const tiles = [
+    ["Calculator", "Compare FDPIR or SNAP value, item by item, against your household.", "calculator", "#5b6b3a"],
+    ["Finances", "Jump straight to your budget — income, expenses, and what's left over.", "finances", "#8a5a3b"],
+    ["Recipes", "Cost and nutrition per serving, with step-by-step directions.", "recipes", "#3b6b78"],
+    ["Locator", "Find the nearest FDPIR distribution site by ZIP code.", "locator", "#7a4f6b"],
+    ["About", "What FDPIR and SNAP are, data privacy, and sourced statistics.", "about", "#a68a2e"],
+  ];
+  const tileList = el("div", { class: "tile-list" });
+  tiles.forEach(([title, desc, page, color]) => {
+    tileList.appendChild(el("div", { class: "tile", onclick: () => showPage(page) }, [
+      el("div", { class: "stripe", style: `background:${color}` }),
+      el("div", { class: "tile-body" }, [
+        el("div", { class: "tile-title" }, title),
+        el("div", { class: "tile-desc" }, desc),
+      ]),
+    ]));
+  });
+  wrap.appendChild(tileList);
+  root.appendChild(wrap);
+}
+
+function renderStatusStrip(container) {
+  clear(container);
+  if (!state.program) return;
+  const detail = state.program === "FDPIR" ? `FDPIR (${state.agencyKey})` : `SNAP ($${fmt0(state.snapBalance)}/mo)`;
+  let text = `Household of ${state.householdSize} · ${detail}`;
+  let warn = false;
+  if (state.lastBudget) {
+    text += ` · $${fmt0(state.lastBudget.leftoverCash)}/mo left after bills`;
+    warn = state.lastBudget.isShortfall;
+  }
+  const row = el("div", { class: "status-strip" + (warn ? " warn" : ""), style: "display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;" });
+  row.appendChild(el("span", {}, text));
+  const linkBtn = el("button", { class: "ghost-btn", style: "border:1px solid var(--border);flex-shrink:0;" }, "Copy shareable link");
+  linkBtn.addEventListener("click", async () => {
+    const ok = await copyTextToClipboard(getShareableLink());
+    linkBtn.textContent = ok ? "Link copied!" : "Couldn't copy — try manually";
+    setTimeout(() => { linkBtn.textContent = "Copy shareable link"; }, 2500);
+  });
+  row.appendChild(linkBtn);
+  container.appendChild(row);
+}
+
+/* ===================== SHARED FORM BUILDERS ===================== */
+function buildProgramPicker(container) {
+  let program = state.program;
+  let agencyKey = state.agencyKey;
+  let snapBalance = state.snapBalance;
+
+  const toggleRow = el("div", { style: "margin-top:8px;" });
+  const detailArea = el("div", { style: "margin-top:14px;" });
+  container.appendChild(toggleRow);
+  container.appendChild(detailArea);
+
+  const fdpirBtn = el("button", { class: "toggle-btn", type: "button" }, "FDPIR");
+  const snapBtn = el("button", { class: "toggle-btn", type: "button" }, "SNAP");
+  toggleRow.appendChild(fdpirBtn);
+  toggleRow.appendChild(snapBtn);
+
+  function refreshToggles() {
+    fdpirBtn.classList.toggle("active", program === "FDPIR");
+    snapBtn.classList.toggle("active", program === "SNAP");
+  }
+  function showDetail() {
+    clear(detailArea);
+    if (program === "FDPIR") {
+      detailArea.appendChild(el("div", { style: "font-weight:700;" }, "Which agency administers your FDPIR package?"));
+      getAgencyRegions().forEach(region => {
+        const agenciesInRegion = Object.keys(FOOD_PACKAGES).filter(k => FOOD_PACKAGES[k].region === region);
+        if (!agenciesInRegion.length) return;
+        detailArea.appendChild(el("div", { class: "region-head" }, region));
+        agenciesInRegion.forEach(key => {
+          const label = el("label", { class: "agency-option" });
+          const radio = el("input", { type: "radio", name: "agency-choice" });
+          radio.checked = key === agencyKey;
+          radio.addEventListener("change", () => { agencyKey = key; });
+          label.appendChild(radio);
+          label.appendChild(document.createTextNode(" •  " + key));
+          detailArea.appendChild(label);
+        });
+      });
+    } else if (program === "SNAP") {
+      detailArea.appendChild(el("div", { style: "font-weight:700;" }, "Monthly SNAP balance ($)"));
+      const input = el("input", { type: "number", min: "0", value: snapBalance || "", style: "margin-top:6px;" });
+      input.addEventListener("input", () => { snapBalance = parseFloat(input.value) || 0; });
+      detailArea.appendChild(input);
+    }
+  }
+  fdpirBtn.addEventListener("click", () => { program = "FDPIR"; refreshToggles(); showDetail(); });
+  snapBtn.addEventListener("click", () => { program = "SNAP"; refreshToggles(); showDetail(); });
+  refreshToggles();
+  showDetail();
+
+  return { getProgram: () => program, getAgencyKey: () => agencyKey, getSnapBalance: () => snapBalance };
+}
+
+function buildIncomeInput(container) {
+  let amount = state.salaryAmount;
+  let frequency = state.salaryFrequency;
+  let months = state.lumpMonthsCovered;
+
+  const row = el("div", {});
+  const amountInput = el("input", { type: "number", min: "0", value: amount || "", style: "margin-right:16px;" });
+  amountInput.addEventListener("input", () => { amount = parseFloat(amountInput.value) || 0; });
+  row.appendChild(amountInput);
+
+  const freqOptions = [["monthly", "Monthly"], ["yearly", "Yearly"], ["lump", "Lump sum (seasonal)"]];
+  freqOptions.forEach(([val, label], i) => {
+    const id = "freq-opt-" + val + "-" + Math.random().toString(36).slice(2, 7);
+    const radio = el("input", { type: "radio", name: "income-freq-" + container.dataset.groupId, id });
+    radio.checked = frequency === val;
+    radio.addEventListener("change", () => { frequency = val; updateMonthsVisibility(); });
+    const lbl = el("label", { class: "radio", for: id });
+    lbl.appendChild(radio);
+    lbl.appendChild(document.createTextNode(" " + label));
+    row.appendChild(lbl);
+  });
+  container.appendChild(row);
+
+  const monthsRow = el("div", { style: "margin-top:10px;max-width:560px;" });
+  const monthsLabel = el("span", {}, "Covers how many months? ");
+  const monthsInput = el("input", { type: "number", min: "1", max: "12", value: months, style: "width:70px;" });
+  monthsInput.addEventListener("input", () => { months = parseInt(monthsInput.value, 10) || 1; });
+  monthsRow.appendChild(monthsLabel);
+  monthsRow.appendChild(monthsInput);
+  monthsRow.appendChild(el("div", { class: "small", style: "margin-top:6px;" },
+    "This spreads a lump payment (a per-capita distribution, seasonal work) evenly across the months it needs " +
+    "to cover — a flat monthly average hides the real risk of running out before the next payment."));
+  container.appendChild(monthsRow);
+
+  function updateMonthsVisibility() { monthsRow.style.display = frequency === "lump" ? "" : "none"; }
+  updateMonthsVisibility();
+
+  return { getAmount: () => amount, getFrequency: () => frequency, getMonths: () => months };
+}
+
+function summaryCard(label, value, sub, warn = false) {
+  return el("div", { class: "summary-card" }, [
+    el("div", { class: "label" }, label),
+    el("div", { class: "value" + (warn ? " warn" : "") }, value),
+    el("div", { class: "sub" }, sub),
+  ]);
+}
+
+function buildFdpirSummary(container) {
+  const totals = totalsForPackage(state.agencyKey, state.householdSize);
+  const cardsRow = el("div", { class: "summary-cards" });
+  cardsRow.appendChild(summaryCard("Total grocery value", `$${fmt0(totals.totalCost)}/mo`,
+    `~$${fmt0(perWeek(totals.totalCost))}/week for a household of ${state.householdSize}`));
+  cardsRow.appendChild(summaryCard("Daily calories & protein", `${fmt0(perDay(totals.kcal))} kcal`,
+    `${fmt0(perDay(totals.protein))}g protein/day`));
+  cardsRow.appendChild(summaryCard("Daily carbs & fat", `${fmt0(perDay(totals.carbs))}g / ${fmt0(perDay(totals.fat))}g`,
+    `carbs / fat per day · ${fmt0(totals.produceSharePct)}% of calories from produce`));
+  const sodiumLimit = DAILY_SODIUM_GUIDELINE_MG * state.householdSize;
+  const sugarLimit = DAILY_ADDED_SUGAR_GUIDELINE_G * state.householdSize;
+  const dailySodium = perDay(totals.sodium), dailySugar = perDay(totals.sugar);
+  const warnFlag = dailySodium > sodiumLimit || dailySugar > sugarLimit;
+  cardsRow.appendChild(summaryCard("Sodium & added sugar", `${fmt0(dailySodium)}mg / ${fmt0(dailySugar)}g`,
+    `sodium (${dailySodium > sodiumLimit ? "above general guideline" : "within guideline"}), ` +
+    `sugar (${dailySugar > sugarLimit ? "above general guideline" : "within guideline"})`, warnFlag));
+  container.appendChild(cardsRow);
+
+  const tableCard = el("div", { class: "card" });
+  tableCard.appendChild(el("h2", {}, `${state.agencyKey} — this month's package, scaled to your household`));
+  const wrapDiv = el("div", { class: "table-wrap" });
+  const table = el("table", { class: "fdpir-table" });
+  const headRow = el("tr");
+  ["Food item", "Quantity", "Unit type", "Servings", "Per serving", "Total cost"].forEach((h, i) => {
+    headRow.appendChild(el("th", { class: (i === 0 || i === 4) ? "left" : "" }, h));
+  });
+  table.appendChild(headRow);
+  [...totals.lines].sort((a, b) => b.kcalTotal - a.kcalTotal).forEach(line => {
+    const macros = `${line.perServingKcal} kcal · ${line.perServingProtein}g P · ${line.perServingCarbs}g C · ${line.perServingFat}g F`;
+    const tr = el("tr", {}, [
+      el("td", { class: "left" }, line.item), el("td", {}, String(line.qty)), el("td", {}, line.unit),
+      el("td", {}, String(line.servingsTotal)), el("td", { class: "left" }, macros), el("td", {}, `$${fmt2(line.costTotal)}`),
+    ]);
+    table.appendChild(tr);
+  });
+  wrapDiv.appendChild(table);
+  tableCard.appendChild(wrapDiv);
+  tableCard.appendChild(el("div", { class: "small", style: "margin-top:8px;" },
+    "Quantity = how many of that unit; Unit type = what one unit is (e.g. a 12oz can)."));
+  tableCard.appendChild(el("div", { class: "small", style: "margin-top:4px;" }, FOOD_PACKAGES[state.agencyKey].sourceNote));
+  container.appendChild(tableCard);
+  return totals.totalCost;
+}
+
+function buildSnapSummary(container) {
+  const cardsRow = el("div", { class: "summary-cards" });
+  cardsRow.appendChild(summaryCard("Monthly SNAP balance", `$${fmt0(state.snapBalance)}/mo`, `~$${fmt0(perWeek(state.snapBalance))}/week`));
+  container.appendChild(cardsRow);
+  return state.snapBalance;
+}
+
+function buildFinancesSection(container, programValue) {
+  const card = el("div", { class: "card" });
+  card.appendChild(el("h2", {}, "Finances"));
+  const monthlyIncome = normalizeIncomeToMonthly(state.salaryAmount, state.salaryFrequency, state.lumpMonthsCovered);
+  card.appendChild(el("div", { style: "margin:4px 0 12px 0;" }, `Monthly take-home pay: $${fmt0(monthlyIncome)}`));
+  if (state.salaryFrequency === "lump") {
+    card.appendChild(el("div", { class: "small", style: "margin-bottom:12px;max-width:600px;" },
+      `Based on a $${fmt0(state.salaryAmount)} lump sum spread over ${state.lumpMonthsCovered} month(s). Make ` +
+      `sure essential bills are covered every month, not just right after it arrives.`));
+  }
+  card.appendChild(el("div", { style: "font-weight:700;" }, "Essential monthly expenses"));
+  if (state.sharedGasCost) {
+    card.appendChild(el("div", { class: "small", style: "margin:4px 0 8px 0;" },
+      `Travel to distribution site is pre-filled at $${fmt0(state.sharedGasCost)}/mo from the Locator page — edit it if that's not right.`));
+  }
+  const expenseInputs = {};
+  EXPENSE_CATEGORIES.forEach(cat => {
+    const row = el("div", { style: "margin:6px 0;display:flex;align-items:center;gap:10px;" });
+    row.appendChild(el("span", { style: "width:220px;display:inline-block;" }, cat));
+    let existing = state.expenses[cat] || 0;
+    if (!existing && cat === "Travel to distribution site" && state.sharedGasCost) existing = state.sharedGasCost;
+    const input = el("input", { type: "number", min: "0", value: existing || "" });
+    row.appendChild(input);
+    expenseInputs[cat] = input;
+    card.appendChild(row);
+  });
+
+  const resultsArea = el("div", { style: "margin-top:14px;" });
+  card.appendChild(resultsArea);
+
+  const calcBtn = el("button", { class: "btn btn-accent", style: "margin-top:16px;" }, "Calculate Budget");
+  calcBtn.addEventListener("click", () => {
+    const expenses = {};
+    for (const [cat, input] of Object.entries(expenseInputs)) {
+      const val = parseFloat(input.value) || 0;
+      if (val < 0) { alert(`Enter a number of 0 or more for ${cat}.`); return; }
+      expenses[cat] = val;
+    }
+    state.expenses = expenses;
+    const budget = computeBudget(monthlyIncome, expenses, programValue);
+    state.lastBudget = budget;
+    clear(resultsArea);
+    const row = el("div", { class: "summary-cards" });
+    row.appendChild(summaryCard("Cash left after bills", `$${fmt0(budget.leftoverCash)}/mo`,
+      `~$${fmt0(budget.weeklyLeftoverCash)}/week`, budget.isShortfall));
+    row.appendChild(summaryCard("Food benefit (separate from cash)", `$${fmt0(budget.programValue)}/mo`,
+      "Covers groceries — not spendable cash"));
+    resultsArea.appendChild(row);
+    if (budget.isShortfall) {
+      resultsArea.appendChild(el("div", { style: "color:var(--warn);margin-top:10px;max-width:600px;" },
+        "Essential expenses are estimated to exceed take-home pay this month. Consider reviewing which " +
+        "expenses are flexible, or contacting a local assistance office for support beyond food."));
+    }
+    const saveRow = el("div", { style: "margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;" });
+    const saveBtn = el("button", { class: "btn-outline" }, "Save Summary as Text File");
+    saveBtn.addEventListener("click", () => saveSummary(monthlyIncome, expenses, budget));
+    saveRow.appendChild(saveBtn);
+
+    const copyBtn = el("button", { class: "btn-outline" }, "Copy Summary");
+    copyBtn.addEventListener("click", async () => {
+      const ok = await copyTextToClipboard(buildBudgetSummaryText(monthlyIncome, expenses, budget));
+      copyBtn.textContent = ok ? "Copied!" : "Couldn't copy";
+      setTimeout(() => { copyBtn.textContent = "Copy Summary"; }, 2000);
+    });
+    saveRow.appendChild(copyBtn);
+
+    const printBtn = el("button", { class: "btn-outline" }, "Print Summary");
+    printBtn.addEventListener("click", () => printSummary(monthlyIncome, expenses, budget));
+    saveRow.appendChild(printBtn);
+
+    resultsArea.appendChild(saveRow);
+  });
+  card.appendChild(calcBtn);
+  container.appendChild(card);
+}
+
+function buildSchoolMealsSection(container) {
+  const card = el("div", { class: "card" });
+  card.appendChild(el("h2", {}, "School meals"));
+  if (state.program === "FDPIR" || state.program === "SNAP") {
+    card.appendChild(el("div", { style: "margin:6px 0 12px 0;max-width:640px;" },
+      `Since your household is enrolled in ${state.program}, your school-age children are automatically ` +
+      `eligible for free school meals through "direct certification" — no separate income application is ` +
+      `needed for that eligibility. (Source: USDA FNS Policy Memo FD-045)`));
+  }
+  const thr = nslpIncomeThresholdsMonthly(state.householdSize);
+  card.appendChild(el("div", { class: "small", style: "max-width:640px;" },
+    `For reference, the 2026-2027 federal income guideline for a household of ${state.householdSize}: free ` +
+    `meals at or below $${fmt0(thr.free)}/month, reduced-price at or below $${fmt0(thr.reduced)}/month. This ` +
+    `applies regardless of FDPIR/SNAP status and may be relevant for other programs, like Head Start. ` +
+    `(Source: USDA FNS Child Nutrition Income Eligibility Guidelines, 130%/185% of the HHS poverty guideline)`));
+  container.appendChild(card);
+}
+
+/* ===================== CALCULATOR ===================== */
+function renderCalculator() {
+  const root = document.getElementById("page-calculator");
+  clear(root);
+  root.appendChild(el("h1", {}, "Calculator"));
+  const stepNames = { 1: "Household size", 2: "FDPIR or SNAP", 3: "Salary", 4: "Results & finances" };
+  root.appendChild(el("div", { class: "step-label" }, `Step ${calcStep} of ${CALC_TOTAL_STEPS}: ${stepNames[calcStep]}`));
+  const track = el("div", { class: "progress-track" });
+  track.appendChild(el("div", { class: "progress-fill", style: `width:${(calcStep / CALC_TOTAL_STEPS) * 100}%` }));
+  root.appendChild(track);
+  const area = el("div", { style: "margin-top:16px;" });
+  root.appendChild(area);
+  if (calcStep === 1) buildCalcStep1(area);
+  else if (calcStep === 2) buildCalcStep2(area);
+  else if (calcStep === 3) buildCalcStep3(area);
+  else if (calcStep === 4) buildCalcResults(area);
+}
+
+function navButtons(container, onContinue, label = "Continue") {
+  const row = el("div", { style: "margin-top:16px;" });
+  if (calcStep > 1) {
+    row.appendChild(el("button", { class: "btn-outline", style: "margin-right:10px;", type: "button",
+      onclick: () => { calcStep--; renderCalculator(); } }, "← Back"));
+  }
+  row.appendChild(el("button", { class: "btn btn-accent", type: "button", onclick: onContinue }, label));
+  container.appendChild(row);
+}
+
+function buildCalcStep1(area) {
+  const card = el("div", { class: "card" });
+  card.appendChild(el("div", { style: "font-weight:700;" }, "How many people are in your household?"));
+  const input = el("input", { type: "number", min: "1", max: "12", value: state.householdSize, style: "margin-top:10px;width:80px;" });
+  card.appendChild(input);
+  area.appendChild(card);
+  navButtons(card, () => {
+    const val = parseInt(input.value, 10);
+    if (!val || val < 1) { alert("Household size must be a whole number of 1 or more."); return; }
+    state.householdSize = val;
+    calcStep = 2;
+    renderCalculator();
+  });
+}
+
+function buildCalcStep2(area) {
+  const card = el("div", { class: "card" });
+  card.appendChild(el("div", { style: "font-weight:700;" }, "Which food program applies to your household?"));
+  card.appendChild(el("div", { class: "small", style: "margin:4px 0 6px 0;max-width:600px;" },
+    "A household is enrolled in FDPIR or SNAP, not both — pick whichever one currently applies."));
+  const picker = buildProgramPicker(card);
+  area.appendChild(card);
+  navButtons(card, () => {
+    const program = picker.getProgram();
+    if (program !== "FDPIR" && program !== "SNAP") { alert("Select FDPIR or SNAP to continue."); return; }
+    if (program === "SNAP") {
+      const bal = picker.getSnapBalance();
+      if (bal < 0) { alert("Enter a SNAP balance of 0 or more."); return; }
+      state.snapBalance = bal;
+    } else {
+      state.agencyKey = picker.getAgencyKey();
+    }
+    state.program = program;
+    calcStep = 3;
+    renderCalculator();
+  });
+}
+
+function buildCalcStep3(area) {
+  const card = el("div", { class: "card", dataset: {} });
+  card.dataset.groupId = "calc";
+  card.appendChild(el("div", { style: "font-weight:700;" }, "What does your household bring home?"));
+  card.appendChild(el("div", { class: "small", style: "margin:4px 0 12px 0;max-width:600px;" },
+    "Use take-home pay (after taxes), not gross salary — used only for the budget in the next step and never leaves this tab."));
+  const income = buildIncomeInput(card);
+  const schoolLabel = el("label", { style: "display:block;margin-top:20px;font-weight:600;" });
+  const schoolCheckbox = el("input", { type: "checkbox" });
+  schoolCheckbox.checked = state.hasSchoolAgeChildren;
+  schoolLabel.appendChild(schoolCheckbox);
+  schoolLabel.appendChild(document.createTextNode(" We have school-age children (K-12) in the household"));
+  card.appendChild(schoolLabel);
+  area.appendChild(card);
+  navButtons(card, () => {
+    const amount = income.getAmount();
+    if (amount < 0) { alert("Enter take-home pay as a number of 0 or more."); return; }
+    state.salaryAmount = amount;
+    state.salaryFrequency = income.getFrequency();
+    state.lumpMonthsCovered = income.getMonths();
+    state.hasSchoolAgeChildren = schoolCheckbox.checked;
+    calcStep = 4;
+    renderCalculator();
+  }, "Calculate");
+}
+
+function buildCalcResults(area) {
+  const programValue = state.program === "FDPIR" ? buildFdpirSummary(area) : buildSnapSummary(area);
+  buildFinancesSection(area, programValue);
+  if (state.hasSchoolAgeChildren) buildSchoolMealsSection(area);
+
+  const row = el("div", { style: "margin-top:6px;" });
+  row.appendChild(el("button", { class: "btn-outline", style: "margin-right:10px;", type: "button",
+    onclick: () => { calcStep = 3; renderCalculator(); } }, "← Back"));
+  row.appendChild(el("button", { class: "btn-outline", type: "button", onclick: () => {
+    Object.assign(state, {
+      householdSize: 4, program: null, agencyKey: Object.keys(FOOD_PACKAGES)[0], snapBalance: 0,
+      salaryAmount: 0, salaryFrequency: "monthly", lumpMonthsCovered: 6, expenses: {}, hasSchoolAgeChildren: false,
+    });
+    calcStep = 1;
+    renderCalculator();
+  } }, "Start Over"));
+  area.appendChild(row);
+}
+
+/* ===================== FINANCES ===================== */
+function renderFinances() {
+  const root = document.getElementById("page-finances");
+  clear(root);
+  root.appendChild(el("h1", {}, "Finances"));
+
+  const summaryRow = el("div", { style: "margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;" });
+  if (state.program) {
+    const detail = state.program === "FDPIR" ? `(${state.agencyKey})` : `($${fmt0(state.snapBalance)}/mo SNAP)`;
+    summaryRow.appendChild(el("div", { style: "font-weight:700;color:var(--accent-dark);" },
+      `Household of ${state.householdSize} · ${state.program} ${detail}`));
+    const changeBtn = el("button", { class: "ghost-btn" }, "Change");
+    changeBtn.addEventListener("click", () => { financesSetupExpanded = !financesSetupExpanded; renderFinances(); });
+    summaryRow.appendChild(changeBtn);
+  } else {
+    summaryRow.appendChild(el("div", { class: "muted" }, "Set up your household once below — it's shared with the Calculator too."));
+  }
+  root.appendChild(summaryRow);
+
+  if (!state.program || financesSetupExpanded) {
+    buildFinancesSetupCard(root);
+  } else {
+    const programValue = state.program === "FDPIR"
+      ? totalsForPackage(state.agencyKey, state.householdSize).totalCost : state.snapBalance;
+    buildFinancesSection(root, programValue);
+    if (state.hasSchoolAgeChildren) buildSchoolMealsSection(root);
+  }
+}
+
+function buildFinancesSetupCard(root) {
+  const card = el("div", { class: "card", dataset: {} });
+  card.dataset.groupId = "finances";
+  card.appendChild(el("div", { style: "font-weight:700;" }, "Household size"));
+  const hhInput = el("input", { type: "number", min: "1", max: "12", value: state.householdSize, style: "margin:6px 0 20px 0;width:80px;" });
+  card.appendChild(hhInput);
+  card.appendChild(el("div", { style: "font-weight:700;" }, "Which food program applies to your household?"));
+  card.appendChild(el("div", { class: "small", style: "margin:2px 0 4px 0;" }, "A household is enrolled in FDPIR or SNAP, not both."));
+  const picker = buildProgramPicker(card);
+  card.appendChild(el("div", { style: "font-weight:700;margin-top:20px;" }, "Monthly take-home pay"));
+  const income = buildIncomeInput(card);
+  const schoolLabel = el("label", { style: "display:block;margin-top:20px;font-weight:600;" });
+  const schoolCheckbox = el("input", { type: "checkbox" });
+  schoolCheckbox.checked = state.hasSchoolAgeChildren;
+  schoolLabel.appendChild(schoolCheckbox);
+  schoolLabel.appendChild(document.createTextNode(" We have school-age children (K-12) in the household"));
+  card.appendChild(schoolLabel);
+
+  const continueBtn = el("button", { class: "btn btn-accent", style: "margin-top:20px;" }, "Continue to Budget");
+  continueBtn.addEventListener("click", () => {
+    const size = parseInt(hhInput.value, 10);
+    if (!size || size < 1) { alert("Household size must be a whole number of 1 or more."); return; }
+    const program = picker.getProgram();
+    if (program !== "FDPIR" && program !== "SNAP") { alert("Select FDPIR or SNAP to continue."); return; }
+    if (program === "SNAP") {
+      const bal = picker.getSnapBalance();
+      if (bal < 0) { alert("Enter a SNAP balance of 0 or more."); return; }
+      state.snapBalance = bal;
+    } else {
+      state.agencyKey = picker.getAgencyKey();
+    }
+    const amount = income.getAmount();
+    if (amount < 0) { alert("Enter take-home pay as a number of 0 or more."); return; }
+    state.householdSize = size;
+    state.program = program;
+    state.salaryAmount = amount;
+    state.salaryFrequency = income.getFrequency();
+    state.lumpMonthsCovered = income.getMonths();
+    state.hasSchoolAgeChildren = schoolCheckbox.checked;
+    financesSetupExpanded = false;
+    renderFinances();
+  });
+  card.appendChild(continueBtn);
+  root.appendChild(card);
+}
+
+/* ===================== RECIPES ===================== */
+function renderRecipes() {
+  const root = document.getElementById("page-recipes");
+  clear(root);
+  root.appendChild(el("h1", {}, "Recipes"));
+  root.appendChild(el("div", { class: "small" }, "Built from common FDPIR food items — cost and nutrition are estimates."));
+
+  const selectedPackage = state.program === "FDPIR" ? state.agencyKey : null;
+  if (selectedPackage) {
+    const label = el("label", { style: "display:block;margin-top:10px;font-weight:600;" });
+    const cb = el("input", { type: "checkbox" });
+    cb.checked = recipeFilters.fitOnly;
+    cb.addEventListener("change", () => { recipeFilters.fitOnly = cb.checked; renderRecipeGrid(); });
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(" Only show recipes that fit my selected FDPIR package"));
+    root.appendChild(label);
+  }
+
+  if (ALL_DIETARY_TAGS.length) {
+    const row = el("div", { style: "margin-top:12px;" });
+    row.appendChild(el("span", { class: "small", style: "margin-right:6px;" }, "Dietary preference:"));
+    ALL_DIETARY_TAGS.forEach(tag => {
+      const chip = el("span", { class: "chip chip-toggle" + (recipeFilters.tags.has(tag) ? " active-tag" : "") }, tag);
+      chip.addEventListener("click", () => {
+        if (recipeFilters.tags.has(tag)) recipeFilters.tags.delete(tag); else recipeFilters.tags.add(tag);
+        renderRecipes();
+      });
+      row.appendChild(chip);
+    });
+    root.appendChild(row);
+  }
+  if (ALL_ALLERGENS.length) {
+    const row2 = el("div", { style: "margin-top:6px;" });
+    row2.appendChild(el("span", { class: "small", style: "margin-right:6px;" }, "Avoid:"));
+    ALL_ALLERGENS.forEach(tag => {
+      const chip = el("span", { class: "chip chip-toggle" + (recipeFilters.excludeAllergens.has(tag) ? " active-allergen" : "") }, tag);
+      chip.addEventListener("click", () => {
+        if (recipeFilters.excludeAllergens.has(tag)) recipeFilters.excludeAllergens.delete(tag);
+        else recipeFilters.excludeAllergens.add(tag);
+        renderRecipes();
+      });
+      row2.appendChild(chip);
+    });
+    root.appendChild(row2);
+  }
+
+  const grid = el("div", { id: "recipe-grid" });
+  root.appendChild(grid);
+  renderRecipeGrid();
+}
+
+function renderRecipeGrid() {
+  const grid = document.getElementById("recipe-grid");
+  if (!grid) return;
+  clear(grid);
+  const selectedPackage = state.program === "FDPIR" ? state.agencyKey : null;
+  let list = RECIPES;
+  if (selectedPackage && recipeFilters.fitOnly) list = list.filter(r => recipeFitsPackage(r, selectedPackage));
+  if (recipeFilters.tags.size) list = list.filter(r => [...recipeFilters.tags].every(t => r.bestFor.includes(t)));
+  if (recipeFilters.excludeAllergens.size) list = list.filter(r => !r.allergens.some(a => recipeFilters.excludeAllergens.has(a)));
+
+  if (!list.length) {
+    grid.appendChild(el("div", { class: "muted" }, "No recipes match the current filters."));
+    const clearBtn = el("button", { class: "btn btn-accent", style: "margin-top:10px;" }, "Clear all filters");
+    clearBtn.addEventListener("click", () => {
+      recipeFilters = { fitOnly: false, tags: new Set(), excludeAllergens: new Set() };
+      renderRecipes();
+    });
+    grid.appendChild(clearBtn);
+    return;
+  }
+
+  const colors = ["#5b6b3a", "#8a5a3b", "#3b6b78", "#7a4f6b"];
+  list.forEach((recipe, i) => {
+    const totals = computeRecipeTotals(recipe);
+    const ps = recipePerServing(totals, recipe.yields);
+    const card = el("div", { class: "recipe-card" });
+    card.appendChild(el("div", { class: "stripe", style: `background:${colors[i % colors.length]}` }));
+    const body = el("div", { class: "rc-body" });
+    body.appendChild(el("h3", {}, recipe.name));
+    body.appendChild(el("div", { class: "rc-desc" }, recipe.description));
+    body.appendChild(el("div", { class: "rc-stats" },
+      `~$${fmt2(ps.cost)}/serving · ${fmt0(ps.kcal)} kcal · ${fmt0(ps.protein)}g protein · serves ${recipe.yields}`));
+    if (selectedPackage) {
+      const missing = missingIngredients(recipe, selectedPackage);
+      if (missing.length) body.appendChild(el("div", { class: "rc-missing" },
+        `Missing from your package: ${missing.join(", ")} — substitute if needed.`));
+    }
+    const chipRow = el("div", { style: "margin-bottom:8px;" });
+    recipe.bestFor.forEach(t => chipRow.appendChild(el("span", { class: "chip", style: "background:var(--accent);" }, t)));
+    recipe.allergens.forEach(t => chipRow.appendChild(el("span", { class: "chip", style: "background:var(--warn);" }, "Contains " + t)));
+    body.appendChild(chipRow);
+    const viewBtn = el("button", { class: "btn-outline", style: "margin-top:auto;align-self:flex-start;" }, "View recipe");
+    viewBtn.addEventListener("click", () => openRecipeModal(recipe, selectedPackage));
+    body.appendChild(viewBtn);
+    card.appendChild(body);
+    grid.appendChild(card);
+  });
+}
+
+function openRecipeModal(recipe, selectedPackage) {
+  const totals = computeRecipeTotals(recipe);
+  const ps = recipePerServing(totals, recipe.yields);
+  const missing = selectedPackage ? missingIngredients(recipe, selectedPackage) : [];
+
+  const backdrop = el("div", { id: "modal-backdrop" });
+  backdrop.addEventListener("click", (e) => { if (e.target === backdrop) backdrop.remove(); });
+  const modal = el("div", { id: "modal" });
+  const closeBtn = el("button", { class: "modal-close", type: "button" }, "×");
+  closeBtn.addEventListener("click", () => backdrop.remove());
+  modal.appendChild(closeBtn);
+  modal.appendChild(el("h2", { style: "margin-top:0;" }, recipe.name));
+  modal.appendChild(el("p", { class: "muted" }, recipe.description));
+  if (missing.length) {
+    modal.appendChild(el("div", { style: "color:var(--warn);margin-bottom:10px;" },
+      `Missing from your selected package: ${missing.join(", ")}. Everything else below is in your package — ` +
+      `swap in what you have for the missing item(s).`));
+  }
+  const chipRow = el("div", { style: "margin-bottom:10px;" });
+  recipe.bestFor.forEach(t => chipRow.appendChild(el("span", { class: "chip", style: "background:var(--accent);" }, t)));
+  recipe.allergens.forEach(t => chipRow.appendChild(el("span", { class: "chip", style: "background:var(--warn);" }, "Contains " + t)));
+  modal.appendChild(chipRow);
+
+  const statsCard = el("div", { class: "card" });
+  statsCard.appendChild(el("div", { style: "font-weight:700;" }, `Serves ${recipe.yields}`));
+  statsCard.appendChild(el("div", {}, `$${fmt2(ps.cost)} per serving ($${fmt2(totals.cost)} total)`));
+  statsCard.appendChild(el("div", {}, `${fmt0(ps.kcal)} kcal · ${fmt0(ps.protein)}g protein · ${fmt0(ps.carbs)}g carbs · ${fmt0(ps.fat)}g fat — per serving`));
+  modal.appendChild(statsCard);
+
+  modal.appendChild(el("div", { style: "font-weight:700;margin-top:10px;" }, "Ingredients"));
+  recipe.ingredients.forEach(([name, servings]) => {
+    modal.appendChild(el("div", {}, `• ${servings} serving(s) of ${name}`));
+  });
+  modal.appendChild(el("div", { style: "font-weight:700;margin-top:14px;" }, "Steps"));
+  recipe.steps.forEach((step, i) => {
+    modal.appendChild(el("div", { style: "margin-bottom:6px;" }, `${i + 1}. ${step}`));
+  });
+
+  backdrop.appendChild(modal);
+  document.body.appendChild(backdrop);
+}
+
+/* ===================== LOCATOR ===================== */
+function renderLocator() {
+  const root = document.getElementById("page-locator");
+  clear(root);
+  root.appendChild(el("h1", {}, "Locator"));
+  const card = el("div", { class: "card" });
+  card.appendChild(el("div", { style: "font-weight:700;" }, "Enter your ZIP code"));
+  card.appendChild(el("div", { class: "small", style: "margin:2px 0 10px 0;" }, "Distances shown are straight-line estimates, not driving directions."));
+  const row = el("div", {});
+  const zipInput = el("input", { type: "text", value: locatorLastZip, style: "width:100px;margin-right:10px;" });
+  row.appendChild(zipInput);
+  const searchBtn = el("button", { class: "btn btn-accent" }, "Find Nearest Center");
+  row.appendChild(searchBtn);
+  card.appendChild(row);
+  const demoZips = Object.keys(ZIP_COORDINATES).sort().join(", ");
+  card.appendChild(el("div", { class: "small", style: "margin-top:10px;" }, `This demo only has a small sample of ZIP codes bundled: ${demoZips}`));
+  root.appendChild(card);
+
+  const resultsArea = el("div", { id: "locator-results" });
+  root.appendChild(resultsArea);
+
+  function doSearch() {
+    locatorLastZip = zipInput.value.trim();
+    locatorLastResults = findNearestSites(locatorLastZip);
+    renderLocatorResults(resultsArea);
+  }
+  searchBtn.addEventListener("click", doSearch);
+  zipInput.addEventListener("keydown", (e) => { if (e.key === "Enter") doSearch(); });
+
+  if (locatorLastResults !== null || locatorLastZip) renderLocatorResults(resultsArea);
+}
+
+function renderLocatorResults(container) {
+  clear(container);
+  if (locatorLastResults === null) {
+    if (locatorLastZip) container.appendChild(el("div", { style: "color:var(--warn);" },
+      `"${locatorLastZip}" isn't in this demo's small ZIP sample. Try one of the ZIP codes listed above.`));
+    return;
+  }
+  locatorLastResults.forEach(({ site, distance }, i) => {
+    const card = el("div", { class: "site-card" });
+    card.appendChild(el("div", { style: "font-weight:700;color:var(--accent-dark);" }, `#${i + 1} · ${site.agency}`));
+    card.appendChild(el("div", {}, `~${fmt0(distance)} miles (straight-line estimate)`));
+    card.appendChild(el("div", { style: "margin-top:4px;" }, site.address));
+    card.appendChild(el("div", { class: "small", style: "margin:2px 0 8px 0;" }, `${site.phone} · ${site.hours}`));
+
+    const actionsRow = el("div", { style: "display:flex;gap:8px;align-items:center;flex-wrap:wrap;" });
+    const useBtn = el("button", { class: "ghost-btn", style: "border:1px solid var(--border);" }, "Use as my FDPIR agency");
+    const statusLbl = el("span", { class: "small", style: "color:var(--accent-dark);" });
+    useBtn.addEventListener("click", () => {
+      state.program = "FDPIR";
+      state.agencyKey = site.agency;
+      statusLbl.textContent = "Set as your FDPIR agency — the Calculator and Finances pages will use it.";
+    });
+    actionsRow.appendChild(useBtn);
+    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${site.lat},${site.lon}`;
+    actionsRow.appendChild(el("a", { href: mapsUrl, target: "_blank", rel: "noopener",
+      class: "ghost-btn", style: "border:1px solid var(--border);text-decoration:none;display:inline-block;" }, "Open in Maps"));
+    card.appendChild(actionsRow);
+    card.appendChild(statusLbl);
+
+    if (i === 0) {
+      const gasBox = el("div", { class: "gas-box" });
+      gasBox.appendChild(el("div", { style: "font-weight:700;color:var(--accent-dark);" }, "Estimate the gas cost of getting here"));
+      gasBox.appendChild(el("div", { class: "small", style: "margin:2px 0 8px 0;" },
+        `Assumes ~${ASSUMED_MPG} mpg at $${GAS_PRICE_PER_GALLON.toFixed(2)}/gallon (U.S. DOT national average, August 2026).`));
+      const tripRow = el("div", {});
+      tripRow.appendChild(el("span", {}, "Trips per month: "));
+      const tripsInput = el("input", { type: "number", min: "0", value: "1", style: "width:60px;margin-right:10px;" });
+      tripRow.appendChild(tripsInput);
+      const addBtn = el("button", { class: "btn btn-accent" }, "Add to my budget");
+      tripRow.appendChild(addBtn);
+      gasBox.appendChild(tripRow);
+      const resultLbl = el("div", { style: "font-weight:700;color:var(--accent-dark);margin-top:8px;" });
+      gasBox.appendChild(resultLbl);
+      addBtn.addEventListener("click", () => {
+        const trips = parseFloat(tripsInput.value) || 0;
+        if (trips < 0) { alert("Enter a number of 0 or more."); return; }
+        const monthlyCost = estimateMonthlyGasCost(distance * 2, trips);
+        state.sharedGasCost = monthlyCost;
+        resultLbl.textContent = `≈ $${fmt0(monthlyCost)}/month — added to the Calculator's Finances step as ` +
+          `"Travel to distribution site" (edit it there if you'd like).`;
+      });
+      card.appendChild(gasBox);
+    }
+    container.appendChild(card);
+  });
+}
+
+/* ===================== ABOUT ===================== */
+const LEARN_SECTIONS = [
+  ["What is FDPIR?", "The Food Distribution Program on Indian Reservations (FDPIR) provides USDA foods each month to income-eligible households living on a reservation, and to Native American households in approved areas near a reservation — or in Oklahoma. It's administered locally by a tribal organization or a state agency; foods offered change month to month.\nSource: USDA Food and Nutrition Service, fna.usda.gov/fdpir"],
+  ["Oklahoma is a specific exception", "Most of Oklahoma has no formal Indian reservations in the way other states do, following historical allotment policy. USDA's FDPIR eligibility rules explicitly account for this: an income-eligible household in Oklahoma with at least one member of a federally recognized tribe can qualify without living on a reservation at all — unlike most other states, where reservation residency (or a nearby approved area) is required.\nSource: USDA FNS FDPIR Factsheet (fna.usda.gov/fdpir/factsheet)"],
+  ["What is SNAP?", "The Supplemental Nutrition Assistance Program (SNAP) provides a monthly dollar benefit, loaded onto a card, spent on groceries at participating stores. The amount depends on household size, income, and expenses."],
+  ["Why can't I have both?", "A household can be certified for FDPIR or SNAP, but not both in the same month — a federal program rule. Households often choose based on access — FDPIR doesn't require a nearby SNAP-accepting grocery store, since the food is distributed directly."],
+  ["Food sovereignty — there may be more than FDPIR or SNAP", "Many tribal nations run their own food sovereignty programs — traditional food gardens, bison or fish programs, seed banks, and Indigenous-led nutrition initiatives — that go beyond what FDPIR or SNAP provide, and that can offer more cultural connection to food than USDA commodities alone. If your tribe runs one, it's worth asking your tribal government what's available alongside FDPIR or SNAP.\nSource: Administration for Children and Families, Tribal Food Sovereignty, Security, and Nutrition Guide (acf.gov/ana)"],
+  ["School meals — what to know", "Households currently enrolled in FDPIR or SNAP make their school-age children automatically eligible for free school meals through \"direct certification\" — no separate income application is required for that eligibility. For households not on either program, free meals are available at or below 130% of the federal poverty guideline, and reduced-price meals at or below 185%; the Calculator's Finances step shows both figures for your household size.\nSources: USDA FNS Policy Memo FD-045 (Direct Certification for FDPIR households); USDA FNS Child Nutrition Income Eligibility Guidelines 2026-2027"],
+  ["How do I apply or switch?", "Contact your local FDPIR administering agency (for FDPIR) or your state/tribal SNAP office (for SNAP) directly — eligibility rules and documentation vary by agency and can change. This app doesn't submit applications or verify eligibility; it's a planning tool for once you know your numbers."],
+  ["By the numbers", "• About 276 tribes currently receive FDPIR benefits, through roughly 100 tribal organizations and a small number of state agencies. (USDA FNS)\n• American Indian and Alaska Native households experienced food insecurity at 23.3% from 2016-2021 — more than double the 11.1% rate across all U.S. households in the same period, the highest rate of any racial or ethnic group measured. (USDA Economic Research Service, EIB-269)\n• A commonly cited estimate is that roughly 1 in 4 American Indian and Alaska Native people experience food insecurity, a rate researchers link partly to distance from grocery stores, unemployment, and the history of federal land and food policy in Native communities. (National Library of Medicine; GAO-24-106218)"],
+  ["Data privacy", "This app runs entirely in your browser. There is no account, no login, and no server storing anything — household size, program choice, income, expenses, and ZIP code never leave this tab. Different sections of the app (the Calculator, Recipes, and Locator) can share information with each other only while this page is open, in memory — for example, a selected agency can filter Recipes, or a gas-cost estimate from Locator can be added to the Calculator's budget. None of it is saved to a file or a server, and all of it is gone the moment you close or refresh this tab."],
+  ["A note on data accuracy", "The FDPIR food packages, prices, recipes, and distribution site listings in this app are illustrative placeholders built to be structurally realistic, not verified current facts. Real FDPIR food packages change monthly or quarterly and vary by agency; real prices, gas costs, site addresses, and poverty guidelines change too, and are cited above as of this build — check fna.usda.gov and aspe.hhs.gov for current figures. Always confirm package contents, benefit amounts, and site information with your local administering agency before making a decision based on this app."],
+];
+
+function renderAbout() {
+  const root = document.getElementById("page-about");
+  clear(root);
+  root.appendChild(el("h1", {}, "About"));
+
+  const importCard = el("div", { class: "card" });
+  importCard.appendChild(el("div", { style: "font-weight:700;" }, "Import agency data"));
+  importCard.appendChild(el("div", { class: "small", style: "margin:2px 0 10px 0;max-width:640px;" },
+    "Have a real, current FDPIR food package list as JSON? Import it here to add or replace agencies for this " +
+    "session — the same format the desktop version reads from a food_packages.json file."));
+  const fileInput = el("input", { type: "file", accept: ".json" });
+  const importStatus = el("div", { class: "small", style: "margin-top:8px;" });
+  fileInput.addEventListener("change", () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const raw = JSON.parse(reader.result);
+        const count = importAgencyPackages(raw);
+        importStatus.textContent = count > 0 ? `Imported ${count} agenc${count === 1 ? "y" : "ies"}.` : "No valid agencies found in that file.";
+        importStatus.style.color = count > 0 ? "var(--accent-dark)" : "var(--warn)";
+      } catch (e) {
+        importStatus.textContent = "Couldn't parse that file as JSON.";
+        importStatus.style.color = "var(--warn)";
+      }
+    };
+    reader.readAsText(file);
+  });
+  importCard.appendChild(fileInput);
+  importCard.appendChild(importStatus);
+  root.appendChild(importCard);
+
+  LEARN_SECTIONS.forEach(([heading, body]) => {
+    const section = el("div", { style: "margin-bottom:18px;" });
+    section.appendChild(el("h3", { style: "color:var(--accent-dark);margin-bottom:4px;" }, heading));
+    body.split("\n").forEach(line => section.appendChild(el("div", { style: "margin-top:2px;" }, line)));
+    root.appendChild(section);
+  });
+}
+
+/* ===================== SAVE SUMMARY (download) ===================== */
+function buildBudgetSummaryText(monthlyIncome, expenses, budget) {
+  const lines = [];
+  lines.push("GroundTruth — Summary");
+  lines.push(`Generated in-browser on ${new Date().toISOString().slice(0, 10)}. This file was not saved automatically —`);
+  lines.push("it exists only because you chose to save it; the app itself keeps nothing on a server.");
+  lines.push("");
+  lines.push(`Household size: ${state.householdSize}`);
+  let packageTotals = null;
+  if (state.program === "FDPIR") {
+    lines.push(`Program: FDPIR (${state.agencyKey})`);
+    packageTotals = totalsForPackage(state.agencyKey, state.householdSize);
+  } else if (state.program === "SNAP") {
+    lines.push(`Program: SNAP ($${fmt0(state.snapBalance)}/month balance)`);
+  }
+  if (packageTotals) {
+    lines.push("");
+    lines.push(`FDPIR package details — ${state.agencyKey} (scaled to household of ${state.householdSize}):`);
+    lines.push(`  Total grocery value: $${fmt0(packageTotals.totalCost)}/month (~$${fmt0(perWeek(packageTotals.totalCost))}/week)`);
+    lines.push(`  Daily nutrition: ${fmt0(perDay(packageTotals.kcal))} kcal, ${fmt0(perDay(packageTotals.protein))}g protein, ${fmt0(perDay(packageTotals.carbs))}g carbs, ${fmt0(perDay(packageTotals.fat))}g fat`);
+    lines.push(`  Sodium: ${fmt0(perDay(packageTotals.sodium))}mg/day; Added sugar: ${fmt0(perDay(packageTotals.sugar))}g/day; ${fmt0(packageTotals.produceSharePct)}% of calories from produce`);
+    lines.push("  Item breakdown:");
+    [...packageTotals.lines].sort((a, b) => b.kcalTotal - a.kcalTotal).forEach(line => {
+      lines.push(`    - ${line.item}: ${line.qty} ${line.unit} (${line.servingsTotal} servings) — ${line.perServingKcal} kcal/${line.perServingProtein}g P/${line.perServingCarbs}g C/${line.perServingFat}g F per serving — $${fmt2(line.costTotal)} total`);
+    });
+  }
+  lines.push("");
+  lines.push(`Monthly take-home pay: $${fmt0(monthlyIncome)}`);
+  lines.push("");
+  lines.push("Essential monthly expenses:");
+  Object.entries(expenses).forEach(([cat, amt]) => lines.push(`  - ${cat}: $${fmt0(amt)}`));
+  lines.push("");
+  lines.push(`Cash left after bills: $${fmt0(budget.leftoverCash)}/month (~$${fmt0(budget.weeklyLeftoverCash)}/week)`);
+  lines.push(`Food benefit (separate from cash, covers groceries): $${fmt0(budget.programValue)}/month`);
+  if (budget.isShortfall) {
+    lines.push("");
+    lines.push("NOTE: essential expenses are estimated to exceed take-home pay this month.");
+  }
+  if (state.hasSchoolAgeChildren) {
+    lines.push("");
+    if (state.program === "FDPIR" || state.program === "SNAP") {
+      lines.push(`School meals: since this household is enrolled in ${state.program}, school-age children are automatically eligible for free school meals via direct certification (USDA FNS Policy Memo FD-045) — no separate income application is needed.`);
+    }
+    const thr = nslpIncomeThresholdsMonthly(state.householdSize);
+    lines.push(`For reference, the 2026-2027 federal income guideline for a household of ${state.householdSize}: free meals at or below $${fmt0(thr.free)}/month, reduced-price at or below $${fmt0(thr.reduced)}/month.`);
+  }
+  lines.push("");
+  lines.push("Figures in this app are planning estimates, not an official benefits determination.");
+  lines.push("Confirm current program amounts and eligibility with your local administering agency.");
+  return lines.join("\n");
+}
+
+function printSummary(monthlyIncome, expenses, budget) {
+  const text = buildBudgetSummaryText(monthlyIncome, expenses, budget);
+  const escaped = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const win = window.open("", "_blank");
+  if (!win) { alert("Please allow pop-ups to print the summary."); return; }
+  win.document.write(
+    "<!DOCTYPE html><html><head><title>GroundTruth — Summary</title>" +
+    "<style>body{font-family:Georgia,serif;white-space:pre-wrap;padding:36px;max-width:680px;" +
+    "margin:0 auto;line-height:1.6;color:#252520;}</style></head><body>" + escaped + "</body></html>"
+  );
+  win.document.close();
+  win.focus();
+  win.print();
+}
+
+async function saveSummary(monthlyIncome, expenses, budget) {
+  const text = buildBudgetSummaryText(monthlyIncome, expenses, budget);
+  const filename = "food-navigator-summary.txt";
+  try {
+    const downloads = (window.claude && typeof window.claude.use === "function")
+      ? await window.claude.use("downloads") : null;
+    if (downloads) {
+      await downloads.save({ filename, data: text });
+      return;
+    }
+  } catch (e) {
+    // declined / rate-limited / unavailable — fall through to a plain browser download
+  }
+  const blob = new Blob([text], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/* ===================== INIT ===================== */
+applyUrlParams();
+activatePage(VALID_PAGES.includes(location.hash.slice(1)) ? location.hash.slice(1) : "home");
+
+</script>
+</body>
+</html>
